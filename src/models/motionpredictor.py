@@ -30,7 +30,7 @@ class MotionPredictor(nn.Module):
                 much when needed.
         number_of_actions: number of classes we have.
         """
-        super(MotionPredictor, self).__init__()
+        super().__init__()
 
         self.human_dofs = 54
         self.input_size = self.human_dofs + number_of_actions

@@ -1,18 +1,18 @@
 
 """Simple code for training an RNN for motion prediction."""
-import math
-import os
-import random
-import sys
-import h5py
-import logging
-import numpy as np
-from utils.data_utils import *
-from models.motionpredictor import *
-import torch
-import torch.optim as optim
-import argparse
+from models.motionpredictor import MotionPredictor
+from utils.data_utils import (
+    define_actions,
+    read_all_data,
+)
+# from utils.data_utils import *
 import matplotlib.pyplot as plt
+import torch.optim as optim
+from numpy import array
+import argparse
+import logging
+import torch
+import os
 
 # Learning
 parser = argparse.ArgumentParser(
@@ -77,9 +77,11 @@ if torch.cuda.is_available():
     logging.info(torch.cuda.get_device_name(torch.cuda.current_device()))
 else:
     logging.info("cpu")
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda"
+                      if torch.cuda.is_available()
+                      else "cpu")
 
-logging.info("Train dir: "+train_dir)
+logging.info(f"Train dir: {train_dir}")
 os.makedirs(train_dir, exist_ok=True)
 
 
@@ -90,25 +92,33 @@ def main():
     number_of_actions = len(actions)
 
     train_set, test_set, data_mean, data_std, dim_to_ignore, dim_to_use = read_all_data(
-        actions, args.seq_length_in, args.seq_length_out, args.data_dir)
+        actions,
+        args.seq_length_in,
+        args.seq_length_out,
+        args.data_dir
+    )
 
     # Create model for training only
-    model = MotionPredictor(args.seq_length_in, args.seq_length_out,
-                            args.size,  # hidden layer size
-                            args.batch_size, args.learning_rate,
-                            args.learning_rate_decay_factor,
-                            len(actions))
+    model = MotionPredictor(
+        args.seq_length_in, args.seq_length_out,
+        args.size,  # hidden layer size
+        args.batch_size, args.learning_rate,
+        args.learning_rate_decay_factor,
+        number_of_actions
+    )
     model = model.to(device)
     # This is the training loop
     loss, val_loss = 0.0, 0.0
+    all_val_losses = []
     current_step = 0
     all_losses = []
-    all_val_losses = []
-
     # The optimizer
     # optimiser = optim.SGD(model.parameters(), lr=args.learning_rate)
     optimiser = optim.Adam(
-        model.parameters(), lr=args.learning_rate, betas=(0.9, 0.999))
+        model.parameters(),
+        lr=args.learning_rate,
+        betas=(0.9, 0.999)
+    )
     iterations = int(args.iterations)
     for _ in range(iterations):
         optimiser.zero_grad()
@@ -117,60 +127,88 @@ def main():
         # === Training step ===
         # Get batch from the training set
         encoder_inputs, decoder_inputs, decoder_outputs = model.get_batch(
-            train_set, actions, device)
+            train_set,
+            actions,
+            device
+        )
         # Forward pass
-        preds = model(encoder_inputs, decoder_inputs, device)
+        preds = model(
+            encoder_inputs,
+            decoder_inputs,
+            device
+        )
         # Loss: Mean Squared Errors
         step_loss = (preds-decoder_outputs)**2
         step_loss = step_loss.mean()
-
         # Backpropagation
         step_loss.backward()
         # Gradient descent step
         optimiser.step()
-
         step_loss = step_loss.cpu().data.numpy()
-
         if current_step % 10 == 0:
             logging.info("step {0:04d}; step_loss: {1:.4f}".format(
-                current_step, step_loss))
+                current_step,
+                step_loss
+            ))
         loss += step_loss / args.test_every
         current_step += 1
         # === step decay ===
         if current_step % args.learning_rate_step == 0:
-            args.learning_rate = args.learning_rate*args.learning_rate_decay_factor
+            args.learning_rate *= args.learning_rate_decay_factor
             optimiser = optim.Adam(
-                model.parameters(), lr=args.learning_rate, betas=(0.9, 0.999))
-            print("Decay learning rate. New value at " + str(args.learning_rate))
-
+                model.parameters(),
+                lr=args.learning_rate,
+                betas=(0.9, 0.999)
+            )
+            print("Decay learning rate. New value at".format(
+                args.learning_rate
+            ))
         # Once in a while, save checkpoint, print statistics.
         if current_step % args.test_every == 0:
             model.eval()
             # === Validation ===
             encoder_inputs, decoder_inputs, decoder_outputs = model.get_batch(
-                test_set, actions, device)
-            preds = model(encoder_inputs, decoder_inputs, device)
-
+                test_set,
+                actions,
+                device
+            )
+            preds = model(
+                encoder_inputs,
+                decoder_inputs,
+                device
+            )
             step_loss = (preds-decoder_outputs)**2
             val_loss = step_loss.mean()
-
             print("\n============================\n"
                   "Global step:         %d\n"
                   "Learning rate:       %.4f\n"
                   "Train loss avg:      %.4f\n"
                   "--------------------------\n"
                   "Val loss:            %.4f\n"
-                  "============================\n" % (current_step,
-                                                      args.learning_rate, loss, val_loss))
+                  "============================\n" % (
+                      current_step,
+                      args.learning_rate,
+                      loss, val_loss)
+                  )
             all_val_losses.append(
-                [current_step, val_loss.cpu().detach().numpy()])
-            all_losses.append([current_step, loss])
-            torch.save(model, train_dir + '/model_' + str(current_step))
+                [current_step,
+                 val_loss.cpu().detach().numpy()]
+            )
+            all_losses.append([
+                current_step,
+                loss]
+            )
+            model_name = f"model_{current_step}"
+            model_name = os.path.join(
+                train_dir,
+                model_name
+            )
+            torch.save(model,
+                       model_name)
             # Reset loss
             loss = 0
-
-    vlosses = np.array(all_val_losses)
-    tlosses = np.array(all_losses)
+    vlosses = array(all_val_losses)
+    tlosses = array(all_losses)
     # Plot losses
     plt.plot(vlosses[:, 0], vlosses[:, 1], 'b')
     plt.plot(tlosses[:, 0], tlosses[:, 1], 'r')
