@@ -14,9 +14,12 @@ class MotionPredictor(nn.Module):
     def __init__(self,
                  source_seq_len,
                  target_seq_len,
-                 rnn_size,  # recurrent layer hidden size
-                 batch_size, learning_rate, learning_rate_decay_factor,
-                 number_of_actions, dropout=0.3):
+                 rnn_size,
+                 batch_size,
+                 learning_rate,
+                 learning_rate_decay_factor,
+                 number_of_actions,
+                 dropout=0.3):
         """Args:
         source_seq_len: length of the input sequence.
         target_seq_len: length of the target sequence.
@@ -31,17 +34,14 @@ class MotionPredictor(nn.Module):
         number_of_actions: number of classes we have.
         """
         super().__init__()
-
         self.human_dofs = 54
         self.input_size = self.human_dofs + number_of_actions
-
-        logging.info("Input size is {}".format(self.input_size))
+        logging.info(f"Input size is {self.input_size}")
         self.source_seq_len = source_seq_len
         self.target_seq_len = target_seq_len
         self.rnn_size = rnn_size
         self.batch_size = batch_size
         self.dropout = dropout
-
         # === Create the RNN that will summarizes the state ===
         self.cell = torch.nn.GRUCell(self.input_size, self.rnn_size)
         self.fc1 = nn.Linear(self.rnn_size, self.input_size)
@@ -65,15 +65,15 @@ class MotionPredictor(nn.Module):
                 state)
             # Apply dropout in training
             state = F.dropout(state, self.dropout, training=self.training)
-        state = self.norm(state)
-        mu = self.mu(state)
-        sigma = self.sigma(state)
+            state = self.norm(state)
+            mu = self.mu(state)
+            sigma = self.sigma(state)
+            state = (state-mu)/sigma
         noise = torch.normal(0,
                              0.001,
-                             (self.batch_size,
+                             (batch_size,
                               self.rnn_size)).to(device)
-        # state = (state-mu)/sigma
-        # state = state+noise
+        state = state+0.001*noise
         outputs = []
         # Decoding, sequentially
         for i, inp in enumerate(decoder_inputs):
@@ -109,11 +109,14 @@ class MotionPredictor(nn.Module):
         # How many frames in total do we need?
         total_frames = self.source_seq_len + self.target_seq_len
         encoder_inputs = np.zeros(
-            (self.batch_size, self.source_seq_len-1, self.input_size), dtype=float)
+            (self.batch_size, self.source_seq_len-1, self.input_size),
+            dtype=float)
         decoder_inputs = np.zeros(
-            (self.batch_size, self.target_seq_len, self.input_size), dtype=float)
+            (self.batch_size, self.target_seq_len, self.input_size),
+            dtype=float)
         decoder_outputs = np.zeros(
-            (self.batch_size, self.target_seq_len, self.input_size), dtype=float)
+            (self.batch_size, self.target_seq_len, self.input_size),
+            dtype=float)
 
         # Generate the sequences
         for i in range(self.batch_size):
