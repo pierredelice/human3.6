@@ -100,12 +100,10 @@ class MotionPredictor(Module):
                 self.dropout,
                 training=self.training
             )
-            state = torch.tanh(state)
-            context = torch.tanh(state)
-            mu = self.mu(state)
-            sigma = self.sigma(context)
-            state = (state-mu)/sigma
-            context = (context-mu)/sigma
+        mu = self.mu(state)
+        sigma = self.sigma(context)
+        state = (state-mu)/sigma
+        context = (context-mu)/sigma
         if not self.training:
             noise = torch.normal(0,
                                  1,
