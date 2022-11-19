@@ -1,12 +1,12 @@
 
 """Sequence-to-sequence model for human motion prediction."""
 from torch.nn.functional import dropout
-from numpy import zeros
 from numpy.random import (
     RandomState,
     randint,
     choice,
 )
+from numpy import zeros
 from torch.nn import (
     LayerNorm,
     LSTMCell,
@@ -95,12 +95,17 @@ class MotionPredictor(Module):
                 self.dropout,
                 training=self.training
             )
+            context = dropout(
+                context,
+                self.dropout,
+                training=self.training
+            )
+            state = torch.tanh(state)
+            context = torch.tanh(state)
             mu = self.mu(state)
             sigma = self.sigma(context)
             state = (state-mu)/sigma
             context = (context-mu)/sigma
-            # state = self.norm(state)
-            # context = self.norm(context)
         if not self.training:
             noise = torch.normal(0,
                                  1,
