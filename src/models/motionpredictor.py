@@ -44,6 +44,7 @@ class MotionPredictor(Module):
         """
         super().__init__()
         self.human_dofs = 54
+        self.embedding = 132
         self.input_size = self.human_dofs + number_of_actions
         logging.info(f"Input size is {self.input_size}")
         self.source_seq_len = source_seq_len
@@ -52,18 +53,31 @@ class MotionPredictor(Module):
         self.batch_size = batch_size
         self.dropout = dropout
         # === Create the RNN that will summarizes the state ===
-        self.encoder = LSTMCell(self.input_size, self.rnn_size)
-        self.decoder = LSTMCell(self.input_size, self.rnn_size)
-        self.fc1 = Linear(self.rnn_size, self.input_size)
-        self.norm = LayerNorm(self.rnn_size)
+        self.encoder = LSTMCell(self.input_size+self.embedding,
+                                self.rnn_size)
+        self.decoder = LSTMCell(self.input_size,
+                                self.rnn_size)
+        self.fc1 = Linear(self.rnn_size,
+                          self.input_size)
         self.mu = Linear(self.rnn_size, 1)
         self.sigma = Linear(self.rnn_size, 1)
+        self.time2vec = Linear(self.input_size,
+                               self.embedding)
 
     def forward(self,
                 encoder_inputs,
                 decoder_inputs,
                 device):
         batch_size = encoder_inputs.shape[0]
+        encoder_emb = torch.sin(self.time2vec(encoder_inputs))
+        # decoder_emb = torch.sin(self.time2vec(decoder_inputs))
+        encoder_inputs = torch.cat((encoder_inputs,
+                                    encoder_emb),
+                                   axis=2)
+        # decoder_inputs = torch.cat((decoder_inputs,
+        # decoder_emb),
+        # axis=2)
+        # print(decoder_inputs.shape)
         encoder_inputs = torch.transpose(
             encoder_inputs,
             0,
@@ -104,6 +118,7 @@ class MotionPredictor(Module):
         sigma = self.sigma(context)
         state = (state-mu)/sigma
         context = (context-mu)/sigma
+        # print(context.shape)
         if not self.training:
             noise = torch.normal(0,
                                  1,
@@ -124,6 +139,7 @@ class MotionPredictor(Module):
                     self.dropout,
                     training=self.training)
             )
+            # print(output.shape)
             outputs.append(output.view(
                 [1, batch_size, self.input_size]
             ))
@@ -198,6 +214,35 @@ class MotionPredictor(Module):
         subaction2 = 2
 
         T1 = data[(subject, action, subaction1, 'even')].shape[0]
+        T2 = data[(subect, action, subaction2, 'even')].shape[0]
+        prefix, suffix = 50, 100
+        # Test is performed always on subject 5
+        # Select 8 random sub-sequences (by specifying their indices)
+        idx = []
+        idx.append(rng.randint(16, T1-prefix-suffix))
+        idx.append(rng.randint(16, T2-prefix-suffix))
+        idx.append(rng.randint(16, T1-prefix-suffix))
+        idx.append(rng.randint(16, T2-prefix-suffix))
+        idx.append(rng.randint(16, T1-prefix-suffix))
+        idx.append(rng.randint(16, T2-prefix-suffix))
+        idx.append(rng.randint(16, T1-prefix-suffix))
+        idx.append(rng.randint(16, T2-prefix-suffix))
+        return idx
+
+    def find_indices_srnn(self, data, action, subject):
+        """
+        Find the same action indices as in SRNN.
+        See https://github.com/asheshjain399/RNNexp/blob/master/structural_rnn/CRFProblems/H3.6m/processdata.py#L325
+        """
+        # Used a fixed dummy seed, following
+        # https://github.com/asheshjain399/RNNexp/blob/srnn/structural_rnn/forecastTrajectories.py#L29
+        SEED = 1234567890
+        rng = RandomState(SEED)
+
+        subaction1 = 1
+        subaction2 = 2
+
+        T1 = data[(subject, action, subaction1, 'even')].shape[0]
         T2 = data[(subject, action, subaction2, 'even')].shape[0]
         prefix, suffix = 50, 100
         # Test is performed always on subject 5
@@ -213,20 +258,18 @@ class MotionPredictor(Module):
         idx.append(rng.randint(16, T2-prefix-suffix))
         return idx
 
-    def get_batch_srnn(self, data, action, device):
+    def get_batch_srnn(self, data, action, subject, device):
         """
         Get a random batch of data from the specified bucket, prepare for step.
-
         Args
-          data: dictionary with k:v, k=((subject, action, subsequence, 'even')),
-                v=nxd matrix with a sequence of poses
-          action: the action to load data from
+        data: dictionary with k:v, k=((subject, action, subsequence, 'even')),
+        v=nxd matrix with a sequence of poses
+        action: the action to load data from
         Returns
-          The tuple (encoder_inputs, decoder_inputs, decoder_outputs);
-          the constructed batches have the proper format to call
-          step(...) later.
-        """
-
+        The tuple (encoder_inputs, decoder_inputs, decoder_outputs);
+        the constructed batches have the proper format to
+          call step(...) later.
+                """
         actions = ["directions",
                    "discussion",
                    "eating",
@@ -242,43 +285,33 @@ class MotionPredictor(Module):
                    "walking",
                    "walkingdog",
                    "walkingtogether"]
-
         if not action in actions:
             raise ValueError("Unrecognized action {0}".format(action))
-
         frames = {}
-        frames[action] = self.find_indices_srnn(data, action)
-
+        frames[action] = self.find_indices_srnn(data, action, subject)
         batch_size = 8  # we always evaluate 8 sequences
-        subject = 5  # we always evaluate on subject 5
         source_seq_len = self.source_seq_len
         target_seq_len = self.target_seq_len
-
         seeds = [(action, (i % 2)+1, frames[action][i])
                  for i in range(batch_size)]
-
         encoder_inputs = zeros(
-            (batch_size, source_seq_len-1, self.input_size), dtype=float)
+            (batch_size, source_seq_len-1, self.input_size),
+            dtype=float)
         decoder_inputs = zeros(
             (batch_size, target_seq_len, self.input_size),
             dtype=float)
         decoder_outputs = zeros(
             (batch_size, target_seq_len, self.input_size),
             dtype=float)
-
         # Compute the number of frames needed
         total_frames = source_seq_len + target_seq_len
-
         # Reproducing SRNN's sequence subsequence selection as done in
         # https://github.com/asheshjain399/RNNexp/blob/master/structural_rnn/CRFProblems/H3.6m/processdata.py#L343
         for i in range(batch_size):
-
             _, subsequence, idx = seeds[i]
             idx = idx + 50
-
             data_sel = data[(subject, action, subsequence, 'even')]
             data_sel = data_sel[(idx-source_seq_len):(idx+target_seq_len), :]
-
             encoder_inputs[i, :, :] = data_sel[0:source_seq_len-1, :]
             decoder_inputs[i, :, :] = data_sel[source_seq_len -
                                                1:(source_seq_len+target_seq_len-1), :]
