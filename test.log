@@ -366,3 +366,127 @@ INFO: Reading subject 5, action walkingdog, subaction 1
 INFO: Reading subject 5, action walkingdog, subaction 2
 INFO: Reading subject 5, action walkingtogether, subaction 1
 INFO: Reading subject 5, action walkingtogether, subaction 2
+INFO: NVIDIA GeForce RTX 2080 with Max-Q Design
+INFO: NVIDIA GeForce RTX 2080 with Max-Q Design
+INFO: NVIDIA GeForce RTX 2080 with Max-Q Design
+INFO: Creating a model with 512 units.
+INFO: Loading model
+INFO: Model created
+INFO: Reading training data (seq_len_in: 50, seq_len_out 10).
+INFO: Reading subject 1, action walking, subaction 1
+INFO: Reading subject 1, action walking, subaction 2
+INFO: Reading subject 6, action walking, subaction 1
+INFO: Reading subject 6, action walking, subaction 2
+INFO: Reading subject 7, action walking, subaction 1
+INFO: Reading subject 7, action walking, subaction 2
+INFO: Reading subject 9, action walking, subaction 1
+INFO: Reading subject 9, action walking, subaction 2
+INFO: Reading subject 11, action walking, subaction 1
+INFO: Reading subject 11, action walking, subaction 2
+INFO: Reading subject 5, action walking, subaction 1
+INFO: Reading subject 5, action walking, subaction 2
+INFO: NVIDIA GeForce RTX 2080 with Max-Q Design
+INFO: Creating a model with 512 units.
+INFO: Loading model
+INFO: Model created
+INFO: Reading training data (seq_len_in: 50, seq_len_out 10).
+INFO: Reading subject 1, action walking, subaction 1
+INFO: Reading subject 1, action walking, subaction 2
+INFO: Reading subject 6, action walking, subaction 1
+INFO: Reading subject 6, action walking, subaction 2
+INFO: Reading subject 7, action walking, subaction 1
+INFO: Reading subject 7, action walking, subaction 2
+INFO: Reading subject 9, action walking, subaction 1
+INFO: Reading subject 9, action walking, subaction 2
+INFO: Reading subject 11, action walking, subaction 1
+INFO: Reading subject 11, action walking, subaction 2
+INFO: Reading subject 5, action walking, subaction 1
+INFO: Reading subject 5, action walking, subaction 2
+INFO: NVIDIA GeForce RTX 2080 with Max-Q Design
+INFO: Creating a model with 512 units.
+INFO: Loading model
+INFO: NVIDIA GeForce RTX 2080 with Max-Q Design
+INFO: Creating a model with 512 units.
+INFO: Loading model
+INFO: Model created
+INFO: Reading training data (seq_len_in: 50, seq_len_out 10).
+INFO: Reading subject 1, action walking, subaction 1
+INFO: Reading subject 1, action walking, subaction 2
+INFO: Reading subject 6, action walking, subaction 1
+INFO: Reading subject 6, action walking, subaction 2
+INFO: Reading subject 7, action walking, subaction 1
+INFO: Reading subject 7, action walking, subaction 2
+INFO: Reading subject 9, action walking, subaction 1
+INFO: Reading subject 9, action walking, subaction 2
+INFO: Reading subject 11, action walking, subaction 1
+INFO: Reading subject 11, action walking, subaction 2
+INFO: Reading subject 5, action walking, subaction 1
+INFO: Reading subject 5, action walking, subaction 2
+INFO: NVIDIA GeForce RTX 2080 with Max-Q Design
+INFO: Creating a model with 512 units.
+INFO: Loading model
+INFO: Model created
+INFO: Reading training data (seq_len_in: 50, seq_len_out 10).
+INFO: Reading subject 1, action walking, subaction 1
+INFO: Reading subject 1, action walking, subaction 2
+INFO: Reading subject 6, action walking, subaction 1
+INFO: Reading subject 6, action walking, subaction 2
+INFO: Reading subject 7, action walking, subaction 1
+INFO: Reading subject 7, action walking, subaction 2
+INFO: Reading subject 9, action walking, subaction 1
+INFO: Reading subject 9, action walking, subaction 2
+INFO: Reading subject 11, action walking, subaction 1
+INFO: Reading subject 11, action walking, subaction 2
+INFO: Reading subject 5, action walking, subaction 1
+INFO: Reading subject 5, action walking, subaction 2
+INFO: NVIDIA GeForce RTX 2080 with Max-Q Design
+INFO: Creating a model with 512 units.
+INFO: Loading model
+INFO: Model created
+INFO: Reading training data (seq_len_in: 50, seq_len_out 10).
+INFO: Reading subject 1, action walking, subaction 1
+INFO: Reading subject 1, action walking, subaction 2
+INFO: Reading subject 6, action walking, subaction 1
+INFO: Reading subject 6, action walking, subaction 2
+INFO: Reading subject 7, action walking, subaction 1
+INFO: Reading subject 7, action walking, subaction 2
+INFO: Reading subject 9, action walking, subaction 1
+INFO: Reading subject 9, action walking, subaction 2
+INFO: Reading subject 11, action walking, subaction 1
+INFO: Reading subject 11, action walking, subaction 2
+INFO: Reading subject 5, action walking, subaction 1
+INFO: Reading subject 5, action walking, subaction 2
+INFO: NVIDIA GeForce RTX 2080 with Max-Q Design
+INFO: Creating a model with 512 units.
+INFO: Loading model
+INFO: Model created
+INFO: Reading training data (seq_len_in: 50, seq_len_out 10).
+INFO: Reading subject 1, action walking, subaction 1
+INFO: Reading subject 1, action walking, subaction 2
+INFO: Reading subject 6, action walking, subaction 1
+INFO: Reading subject 6, action walking, subaction 2
+INFO: Reading subject 7, action walking, subaction 1
+INFO: Reading subject 7, action walking, subaction 2
+INFO: Reading subject 9, action walking, subaction 1
+INFO: Reading subject 9, action walking, subaction 2
+INFO: Reading subject 11, action walking, subaction 1
+INFO: Reading subject 11, action walking, subaction 2
+INFO: Reading subject 5, action walking, subaction 1
+INFO: Reading subject 5, action walking, subaction 2
+INFO: NVIDIA GeForce RTX 2080 with Max-Q Design
+INFO: Creating a model with 512 units.
+INFO: Loading model
+INFO: Model created
+INFO: Reading training data (seq_len_in: 50, seq_len_out 10).
+INFO: Reading subject 1, action walking, subaction 1
+INFO: Reading subject 1, action walking, subaction 2
+INFO: Reading subject 6, action walking, subaction 1
+INFO: Reading subject 6, action walking, subaction 2
+INFO: Reading subject 7, action walking, subaction 1
+INFO: Reading subject 7, action walking, subaction 2
+INFO: Reading subject 9, action walking, subaction 1
+INFO: Reading subject 9, action walking, subaction 2
+INFO: Reading subject 11, action walking, subaction 1
+INFO: Reading subject 11, action walking, subaction 2
+INFO: Reading subject 5, action walking, subaction 1
+INFO: Reading subject 5, action walking, subaction 2
