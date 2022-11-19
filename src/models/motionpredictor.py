@@ -69,14 +69,9 @@ class MotionPredictor(Module):
                 device):
         batch_size = encoder_inputs.shape[0]
         encoder_emb = torch.sin(self.time2vec(encoder_inputs))
-        # decoder_emb = torch.sin(self.time2vec(decoder_inputs))
         encoder_inputs = torch.cat((encoder_inputs,
                                     encoder_emb),
                                    axis=2)
-        # decoder_inputs = torch.cat((decoder_inputs,
-        # decoder_emb),
-        # axis=2)
-        # print(decoder_inputs.shape)
         encoder_inputs = torch.transpose(
             encoder_inputs,
             0,
@@ -117,7 +112,6 @@ class MotionPredictor(Module):
         sigma = self.sigma(context)
         state = (state-mu)/sigma
         context = (context-mu)/sigma
-        # print(context.shape)
         if not self.training:
             noise = torch.normal(0,
                                  1,
