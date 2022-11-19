@@ -182,8 +182,15 @@ def main():
     tlosses = array(all_losses)
     losses = DataFrame()
     losses["Validation"] = vlosses[:, 1]
-    losses["Total"] = tlosses[:, 1]
-    losses.to_csv("test.csv")
+    losses["Train"] = tlosses[:, 1]
+    losses.index = tlosses[:, 0]
+    losses.index.name = "Iterations"
+    filename = "loss.csv"
+    filename = join(
+        params["results_dir"],
+        filename
+    )
+    losses.to_csv(filename)
 
 
 if __name__ == "__main__":
