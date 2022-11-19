@@ -8,7 +8,6 @@ from numpy.random import (
 )
 from numpy import zeros
 from torch.nn import (
-    LayerNorm,
     LSTMCell,
     Module,
     Linear,
@@ -124,8 +123,8 @@ class MotionPredictor(Module):
                                  1,
                                  (batch_size,
                                   self.rnn_size)).to(device)
-            state = state+0.1*noise
-            context = context+0.1*noise
+            state = state+10*noise
+            context = context+10*noise
         outputs = []
         # Decoding, sequentially
         for i, inp in enumerate(decoder_inputs):
