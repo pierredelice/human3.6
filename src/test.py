@@ -88,6 +88,7 @@ def get_srnn_gts(actions,
         _, _, srnn_expmap = model.get_batch_srnn(
             test_set,
             action,
+            5,
             device
         )
         srnn_expmap = srnn_expmap.cpu()
@@ -175,6 +176,7 @@ def main():
         encoder_inputs, decoder_inputs, decoder_outputs = model.get_batch_srnn(
             test_set,
             action,
+            5,
             device
         )
         # Forward pass
