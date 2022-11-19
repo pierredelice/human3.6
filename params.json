@@ -8,6 +8,7 @@
     "action":"all",
     "load_model":0,
     "results_dir":"./results",
+    "graphics_dir":"./graphics",
     "log_file_train":"train.log",
     "log_file_test":"test.log",
     "log_level":20,

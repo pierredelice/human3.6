@@ -78,31 +78,28 @@ def main():
         )
 
     # === Plot and animate ===
-    fig = plt.figure()
-    ax = plt.axes(projection='3d')
-    ob = Ax3DPose(ax)
-
+    fig = plt.figure(figsize=(12, 6))
+    ax1 = fig.add_subplot(1, 2, 1, projection='3d')
+    ax2 = fig.add_subplot(1, 2, 2, projection='3d')
+    ob1 = Ax3DPose(ax1)
+    ob2 = Ax3DPose(ax2)
     # First, plot the conditioning ground truth
     for i in range(nframes_gt):
-        ob.update(
+        ob1.update(
             xyz_gt[i, :],
             lcolor="#ff0000",
-            rcolor="#0000ff"
+            rcolor="#0000ff",
+            title="Observations",
         )
-        plt.show(block=False)
-        plt.title("Observations")
-        fig.canvas.draw()
-        plt.pause(0.01)
-
-    # Plot the prediction
-    for i in range(nframes_pred):
-        ob.update(
+        # ob1.set_title("Observations")
+        ob2.update(
             xyz_pred[i, :],
             lcolor="#9b59b6",
-            rcolor="#2ecc71"
+            rcolor="#2ecc71",
+            title="Predicted",
         )
+        plt.tight_layout()
         plt.show(block=False)
-        plt.title("Predictions")
         fig.canvas.draw()
         plt.pause(0.01)
 

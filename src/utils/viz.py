@@ -8,7 +8,10 @@ from mpl_toolkits.mplot3d import Axes3D
 
 
 class Ax3DPose(object):
-    def __init__(self, ax, lcolor="#3498db", rcolor="#e74c3c"):
+    def __init__(self,
+                 ax,
+                 lcolor="#3498db",
+                 rcolor="#e74c3c"):
         """
         Create a 3d pose visualizer that can be updated with new poses.
 
@@ -41,7 +44,11 @@ class Ax3DPose(object):
         self.ax.set_ylabel("y")
         self.ax.set_zlabel("z")
 
-    def update(self, channels, lcolor="#3498db", rcolor="#e74c3c"):
+    def update(self,
+               channels,
+               lcolor="#3498db",
+               rcolor="#e74c3c",
+               title: str = ""):
         """
         Update the plotted 3d pose.
 
@@ -70,3 +77,4 @@ class Ax3DPose(object):
         self.ax.set_xlim3d([-r+xroot, r+xroot])
         self.ax.set_zlim3d([-r+zroot, r+zroot])
         self.ax.set_ylim3d([-r+yroot, r+yroot])
+        self.ax.set_title(title)
