@@ -32,6 +32,7 @@ train_dir = join(
     f"size_{params['size']}",
     f"lr_{params['learning_rate']}"
 )
+print(train_dir)
 train_dir = normpath(train_dir)
 # Logging
 if params["log_file_test"] == "":
@@ -121,7 +122,8 @@ def main():
     # === Create the model ===
     logging.info("Creating a model with {} units.".format(params['size']))
     logging.info("Loading model")
-    model_name = f"model_{params['iterations']}"
+    model_name = f"model_4800"
+    # model_name = f"model_{params['iterations']"
     model_name = join(
         train_dir,
         model_name
