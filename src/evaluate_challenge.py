@@ -5,12 +5,12 @@ from utils.read_params import read_params
 from utils.data_utils import (
     revert_output_format,
     unNormalizeData,
-    define_actions,
     read_all_data,
     expmap2rotmat,
     rotmat2euler,
 )
 # from utils.data_utils import *
+from numpy import finfo, ones
 from os.path import (
     normpath,
     join
@@ -113,7 +113,7 @@ def get_srnn_gts(actions,
         )
         srnn_expmap = srnn_expmap.cpu()
         # expmap -> rotmat -> euler
-        for i in np.arange(srnn_expmap.shape[0]):
+        for i in range(srnn_expmap.shape[0]):
             denormed = unNormalizeData(
                 srnn_expmap[i, :, :],
                 data_mean,
@@ -122,8 +122,8 @@ def get_srnn_gts(actions,
                 actions
             )
             if to_euler:
-                for j in np.arange(denormed.shape[0]):
-                    for k in np.arange(3, 97, 3):
+                for j in range(denormed.shape[0]):
+                    for k in range(3, 97, 3):
                         denormed[j, k:k + 3] = rotmat2euler(
                             expmap2rotmat(
                                 denormed[j, k:k+3]
@@ -143,7 +143,7 @@ def main():
     logging.info("Creating a model with {} units.".format(params["size"]))
     sampling = True
     logging.info("Loading model")
-    model_name = f"model_{params['iterations']}"
+    model_name = f"model_4800"
     model_name = join(
         train_dir,
         model_name
@@ -187,7 +187,7 @@ def main():
     # Clean and create a new h5 file of samples
     SAMPLES_FNAME = 'samples.h5'
     try:
-        os.remove(SAMPLES_FNAME)
+        remove(SAMPLES_FNAME)
     except OSError:
         pass
     action = 'walking'
@@ -217,8 +217,8 @@ def main():
             device
         )
     srnn_poses = srnn_poses.cpu().data.numpy()
-    min_mean_errors_batch = np.finfo(
-        srnn_poses.dtype).max*np.ones((srnn_poses.shape[0]))
+    min_mean_errors_batch = finfo(
+        srnn_poses.dtype).max*ones((srnn_poses.shape[0]))
     # Cycling over the batch elements
     for t in range(srnn_poses.shape[0]):
         for j in range(nsamples):

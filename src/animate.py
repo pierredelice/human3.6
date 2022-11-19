@@ -1,3 +1,4 @@
+import moviepy.video.io.ImageSequenceClip as MovieMaker
 from utils.read_params import read_params
 from utils.forward_kinematics import (
     revert_coordinate_space,
@@ -16,6 +17,21 @@ import logging
 import h5py
 
 params = read_params()
+
+
+def create_animation(filenames: list,
+                     name: str = "Animation",
+                     fps: int = 20) -> None:
+    """
+    Funcion que ejecuta la creacion de la animacion
+    """
+    output_file = f"{name}.mp4"
+    movie = MovieMaker.ImageSequenceClip(
+        filenames,
+        fps=fps
+    )
+    movie.write_videofile(output_file,
+                          logger=None)
 
 
 def main():
@@ -84,6 +100,8 @@ def main():
     ob1 = Ax3DPose(ax1)
     ob2 = Ax3DPose(ax2)
     # First, plot the conditioning ground truth
+    n_len = len(str(nframes_gt))
+    filenames = list()
     for i in range(nframes_gt):
         ob1.update(
             xyz_gt[i, :],
@@ -99,9 +117,18 @@ def main():
             title="Predicted",
         )
         plt.tight_layout()
-        plt.show(block=False)
-        fig.canvas.draw()
-        plt.pause(0.01)
+        filename = f"{i}"
+        filename = filename.zfill(n_len)
+        filename = f"{filename}.png"
+        filename = join(
+            params["graphics_dir"],
+            filename
+        )
+        plt.savefig(filename)
+        filenames.append(filename)
+    create_animation(
+        filenames
+    )
 
 
 if __name__ == '__main__':
