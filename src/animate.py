@@ -6,9 +6,12 @@ from utils.forward_kinematics import (
 )
 import matplotlib.pyplot as plt
 from utils.viz import Ax3DPose
-# from utils.viz import *
 from os.path import join
-import numpy as np
+from numpy import (
+    zeros,
+    vstack,
+    eye,
+)
 import logging
 import h5py
 
@@ -45,18 +48,18 @@ def main():
     )
     # Put them together and revert the coordinate space
     expmap_all = revert_coordinate_space(
-        np.vstack(
+        vstack(
             (expmap_gt, expmap_pred)),
-        np.eye(3),
-        np.zeros(3)
+        eye(3),
+        zeros(3)
     )
     expmap_gt = expmap_all[:nframes_gt, :]
     expmap_pred = expmap_all[nframes_gt:, :]
     # Use forward kinematics to compute 33 3d points for each frame
-    xyz_gt = np.zeros((nframes_gt,
-                       96))
-    xyz_pred = np.zeros((nframes_pred,
-                         96))
+    xyz_gt = zeros((nframes_gt,
+                    96))
+    xyz_pred = zeros((nframes_pred,
+                      96))
     for i in range(nframes_gt):
         xyz_gt[i, :] = fkl(
             expmap_gt[i, :],
