@@ -3,13 +3,14 @@
 from utils.evaluation import evaluate_batch
 from utils.read_params import read_params
 from utils.data_utils import (
+    revert_output_format,
+    unNormalizeData,
     define_actions,
     read_all_data,
-    unNormalizeData,
     expmap2rotmat,
     rotmat2euler,
-    revert_output_format,
 )
+from pandas import DataFrame
 from os.path import (
     normpath,
     join
@@ -18,7 +19,6 @@ from os import (
     makedirs,
     remove,
 )
-import numpy as np
 import logging
 import torch
 import h5py
@@ -92,7 +92,7 @@ def get_srnn_gts(actions,
         )
         srnn_expmap = srnn_expmap.cpu()
         # expmap -> rotmat -> euler
-        for i in np.arange(srnn_expmap.shape[0]):
+        for i in range(srnn_expmap.shape[0]):
             denormed = unNormalizeData(
                 srnn_expmap[i, :, :],
                 data_mean,
@@ -101,8 +101,8 @@ def get_srnn_gts(actions,
                 actions
             )
             if to_euler:
-                for j in np.arange(denormed.shape[0]):
-                    for k in np.arange(3, 97, 3):
+                for j in range(denormed.shape[0]):
+                    for k in range(3, 97, 3):
                         denormed[j, k:k + 3] = rotmat2euler(
                             expmap2rotmat(denormed[j, k:k+3]
                                           ))
@@ -130,7 +130,6 @@ def main():
     model.target_seq_len = 100
     model = model.to(device)
     logging.info("Model created")
-
     # Load all the data
     _, test_set, data_mean, data_std, dim_to_ignore, _ = read_all_data(
         actions,
@@ -138,14 +137,25 @@ def main():
         params["seq_length_in"],
         params["data_dir"],
     )
-
     # === Read and denormalize the gt with srnn's seeds, as we'll need them
     # many times for evaluation in Euler Angles ===
-    srnn_gts_expmap = get_srnn_gts(actions, model, test_set, data_mean,
-                                   data_std, dim_to_ignore, to_euler=False)
-    srnn_gts_euler = get_srnn_gts(actions, model, test_set, data_mean,
-                                  data_std, dim_to_ignore)
-
+    srnn_gts_expmap = get_srnn_gts(
+        actions,
+        model,
+        test_set,
+        data_mean,
+        data_std,
+        dim_to_ignore,
+        to_euler=False
+    )
+    srnn_gts_euler = get_srnn_gts(
+        actions,
+        model,
+        test_set,
+        data_mean,
+        data_std,
+        dim_to_ignore
+    )
     # Clean and create a new h5 file of samples
     SAMPLES_FNAME = "sample.h5"
     SAMPLES_FNAME = join(
@@ -157,14 +167,22 @@ def main():
     except OSError:
         pass
 
+    results = DataFrame()
     # Predict and save for each action
     for action in actions:
 
         # Make prediction with srnn' seeds
         encoder_inputs, decoder_inputs, decoder_outputs = model.get_batch_srnn(
-            test_set, action, device)
+            test_set,
+            action,
+            device
+        )
         # Forward pass
-        srnn_poses = model(encoder_inputs, decoder_inputs, device)
+        srnn_poses = model(
+            encoder_inputs,
+            decoder_inputs,
+            device
+        )
         srnn_loss = (srnn_poses - decoder_outputs)**2
         srnn_loss.cpu().data.numpy()
         srnn_loss = srnn_loss.mean()
@@ -177,7 +195,7 @@ def main():
             srnn_poses, data_mean, data_std, dim_to_ignore, actions)
         # Save the samples
         with h5py.File(SAMPLES_FNAME, 'a') as hf:
-            for i in np.arange(nsamples):
+            for i in range(nsamples):
                 # Save conditioning ground truth
                 node_name = 'expmap/gt/{1}_{0}'.format(i, action)
                 hf.create_dataset(node_name, data=srnn_gts_expmap[action][i])
@@ -190,25 +208,43 @@ def main():
             srnn_pred_expmap,
             srnn_gts_euler[action]
         )
-        text = 'Mean error for test data'
-        text1 = '{} along the horizon on action {}: {}'.format(
-            text,
-            action,
-            mean_errors_batch
-        )
-        text2 = '{} at horizon %s on action {}: {}'.format(
-            text,
-            action,
-            mean_errors_batch
-        )
-        logging.info(text1)
-        logging.info(text2)
+        results[action] = mean_errors_batch
+        # text = 'Mean error for test data'
+        # text1 = '{} along the horizon on action {}: {}'.format(
+        # text,
+        # action,
+        # mean_errors_batch
+        # )
+        # text2 = '{} at horizon {} on action {}: {}'.format(
+        # text,
+        # params["horizon_test_step"],
+        # action,
+        # mean_errors_batch[params["horizon_test_step"]]
+        # )
+        # logging.info(text1)
+        # logging.info(text2)
         with h5py.File(SAMPLES_FNAME, 'a') as hf:
             node_name = 'mean_{0}_error'.format(action)
             hf.create_dataset(
                 node_name,
                 data=mean_errors_batch
             )
+    mean = DataFrame(results.mean())
+    mean.index.name = "Action"
+    mean.columns = ["Mean error"]
+    filename = "mean_error.csv"
+    filename = join(
+        params["results_dir"],
+        filename
+    )
+    results.to_csv(filename,
+                   index=False)
+    filename = "mean_batch_error.csv"
+    filename = join(
+        params["results_dir"],
+        filename
+    )
+    mean.to_csv(filename)
     return
 
 
