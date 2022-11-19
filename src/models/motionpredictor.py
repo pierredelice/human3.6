@@ -1,25 +1,34 @@
 
 """Sequence-to-sequence model for human motion prediction."""
-import torch.nn.functional as F
-from torch import nn
-import numpy as np
+from torch.nn.functional import dropout
+from numpy import zeros
+from numpy.random import (
+    RandomState,
+    randint,
+    choice,
+)
+from torch.nn import (
+    LayerNorm,
+    LSTMCell,
+    Module,
+    Linear,
+)
 import logging
-import random
 import torch
 
 
-class MotionPredictor(nn.Module):
+class MotionPredictor(Module):
     """Sequence-to-sequence model for human motion prediction"""
 
     def __init__(self,
-                 source_seq_len,
-                 target_seq_len,
-                 rnn_size,
-                 batch_size,
-                 learning_rate,
-                 learning_rate_decay_factor,
-                 number_of_actions,
-                 dropout=0.3):
+                 source_seq_len: int,
+                 target_seq_len: int,
+                 rnn_size: int,
+                 batch_size: int,
+                 learning_rate: float,
+                 learning_rate_decay_factor: float,
+                 number_of_actions: int,
+                 dropout=0.3) -> None:
         """Args:
         source_seq_len: length of the input sequence.
         target_seq_len: length of the target sequence.
@@ -43,44 +52,71 @@ class MotionPredictor(nn.Module):
         self.batch_size = batch_size
         self.dropout = dropout
         # === Create the RNN that will summarizes the state ===
-        self.cell = torch.nn.GRUCell(self.input_size, self.rnn_size)
-        self.fc1 = nn.Linear(self.rnn_size, self.input_size)
-        self.norm = nn.LayerNorm(self.rnn_size)
-        self.mu = nn.Linear(self.rnn_size, 1)
-        self.sigma = nn.Linear(self.rnn_size, 1)
+        self.encoder = LSTMCell(self.input_size, self.rnn_size)
+        self.decoder = LSTMCell(self.input_size, self.rnn_size)
+        self.fc1 = Linear(self.rnn_size, self.input_size)
+        self.norm = LayerNorm(self.rnn_size)
+        self.mu = Linear(self.rnn_size, 1)
+        self.sigma = Linear(self.rnn_size, 1)
 
     def forward(self,
                 encoder_inputs,
                 decoder_inputs,
                 device):
         batch_size = encoder_inputs.shape[0]
-        encoder_inputs = torch.transpose(encoder_inputs, 0, 1)
-        decoder_inputs = torch.transpose(decoder_inputs, 0, 1)
-        state = torch.zeros(batch_size, self.rnn_size).to(device)
+        encoder_inputs = torch.transpose(
+            encoder_inputs,
+            0,
+            1
+        )
+        decoder_inputs = torch.transpose(
+            decoder_inputs,
+            0,
+            1
+        )
+        state = torch.zeros(
+            batch_size,
+            self.rnn_size
+        ).to(device)
+        context = torch.zeros(
+            batch_size,
+            self.rnn_size
+        ).to(device)
         # Encoding
         for i in range(self.source_seq_len-1):
             # Apply the RNN cell
-            state = self.cell(
+            state, context = self.encoder(
                 encoder_inputs[i],
-                state)
+                (state,
+                 context))
             # Apply dropout in training
-            state = F.dropout(state, self.dropout, training=self.training)
-            state = self.norm(state)
+            state = dropout(
+                state,
+                self.dropout,
+                training=self.training
+            )
             mu = self.mu(state)
-            sigma = self.sigma(state)
+            sigma = self.sigma(context)
             state = (state-mu)/sigma
-        noise = torch.normal(0,
-                             0.001,
-                             (batch_size,
-                              self.rnn_size)).to(device)
-        state = state+0.001*noise
+            context = (context-mu)/sigma
+            # state = self.norm(state)
+            # context = self.norm(context)
+        if not self.training:
+            noise = torch.normal(0,
+                                 1,
+                                 (batch_size,
+                                  self.rnn_size)).to(device)
+            state = state+0.1*noise
+            context = context+0.1*noise
         outputs = []
         # Decoding, sequentially
         for i, inp in enumerate(decoder_inputs):
-            state = self.cell(inp, state)
+            state, context = self.decoder(inp,
+                                          (state,
+                                           context))
             # Output is seen as a residual to the previous value
             output = inp + self.fc1(
-                F.dropout(
+                dropout(
                     state,
                     self.dropout,
                     training=self.training)
@@ -93,28 +129,33 @@ class MotionPredictor(nn.Module):
         return torch.transpose(outputs, 0, 1)
 
     def get_batch(self, data, actions, device):
-        """Get a random batch of data from the specified bucket, prepare for step.
+        """
+        Get a random batch of data from the specified bucket, prepare for step.
         Args
                 data: a list of sequences of size n-by-d to fit the model to.
                 actions: a list of the actions we are using
                 device: the device on which to do the computation (cpu/gpu)
         Returns
                 The tuple (encoder_inputs, decoder_inputs, decoder_outputs);
-                the constructed batches have the proper format to call step(...) later.
+                the constructed batches have the proper format to
+                call step(...) later.
         """
 
         # Select entries at random
         all_keys = list(data.keys())
-        chosen_keys = np.random.choice(len(all_keys), self.batch_size)
+        chosen_keys = choice(
+            len(all_keys),
+            self.batch_size
+        )
         # How many frames in total do we need?
         total_frames = self.source_seq_len + self.target_seq_len
-        encoder_inputs = np.zeros(
+        encoder_inputs = zeros(
             (self.batch_size, self.source_seq_len-1, self.input_size),
             dtype=float)
-        decoder_inputs = np.zeros(
+        decoder_inputs = zeros(
             (self.batch_size, self.target_seq_len, self.input_size),
             dtype=float)
-        decoder_outputs = np.zeros(
+        decoder_outputs = zeros(
             (self.batch_size, self.target_seq_len, self.input_size),
             dtype=float)
 
@@ -124,7 +165,7 @@ class MotionPredictor(nn.Module):
             # Get the number of frames
             n, _ = data[the_key].shape
             # Sample somewhere in the middle
-            idx = np.random.randint(16, n-total_frames)
+            idx = randint(16, n-total_frames)
             # Select the data around the sampled points
             data_sel = data[the_key][idx:idx+total_frames, :]
             # Add the data
@@ -147,7 +188,7 @@ class MotionPredictor(nn.Module):
         # Used a fixed dummy seed, following
         # https://github.com/asheshjain399/RNNexp/blob/srnn/structural_rnn/forecastTrajectories.py#L29
         SEED = 1234567890
-        rng = np.random.RandomState(SEED)
+        rng = RandomState(SEED)
 
         subject = 5
         subaction1 = 1
@@ -179,11 +220,25 @@ class MotionPredictor(nn.Module):
           action: the action to load data from
         Returns
           The tuple (encoder_inputs, decoder_inputs, decoder_outputs);
-          the constructed batches have the proper format to call step(...) later.
+          the constructed batches have the proper format to call
+          step(...) later.
         """
 
-        actions = ["directions", "discussion", "eating", "greeting", "phoning", "posing", "purchases", "sitting", "sittingdown", "smoking",
-                   "takingphoto", "waiting", "walking", "walkingdog", "walkingtogether"]
+        actions = ["directions",
+                   "discussion",
+                   "eating",
+                   "greeting",
+                   "phoning",
+                   "posing",
+                   "purchases",
+                   "sitting",
+                   "sittingdown",
+                   "smoking",
+                   "takingphoto",
+                   "waiting",
+                   "walking",
+                   "walkingdog",
+                   "walkingtogether"]
 
         if not action in actions:
             raise ValueError("Unrecognized action {0}".format(action))
@@ -199,12 +254,14 @@ class MotionPredictor(nn.Module):
         seeds = [(action, (i % 2)+1, frames[action][i])
                  for i in range(batch_size)]
 
-        encoder_inputs = np.zeros(
+        encoder_inputs = zeros(
             (batch_size, source_seq_len-1, self.input_size), dtype=float)
-        decoder_inputs = np.zeros(
-            (batch_size, target_seq_len, self.input_size), dtype=float)
-        decoder_outputs = np.zeros(
-            (batch_size, target_seq_len, self.input_size), dtype=float)
+        decoder_inputs = zeros(
+            (batch_size, target_seq_len, self.input_size),
+            dtype=float)
+        decoder_outputs = zeros(
+            (batch_size, target_seq_len, self.input_size),
+            dtype=float)
 
         # Compute the number of frames needed
         total_frames = source_seq_len + target_seq_len
