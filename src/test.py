@@ -1,19 +1,34 @@
 
 """Simple code for training an RNN for motion prediction."""
-from utils.evaluation import evaluate, evaluate_batch
 from models.motionpredictor import MotionPredictor
 from utils.read_params import read_params
-from models.motionpredictor import *
-from utils.data_utils import *
-import torch.optim as optim
+from utils.data_utils import (
+    define_actions,
+    read_all_data,
+    unNormalizeData,
+    expmap2rotmat,
+    rotmat2euler,
+    revert_output_format,
+)
+from utils.evaluation import (
+    evaluate_batch,
+    evaluate,
+)
+from os.path import (
+    normpath,
+    join
+)
+from os import (
+    makedirs,
+    remove,
+)
 import numpy as np
 import logging
 import torch
 import h5py
-import os
 
 params = read_params()
-train_dir = os.path.join(
+train_dir = join(
     params["train_dir"],
     params["action"],
     f"out_{params['seq_length_out']}",
@@ -21,13 +36,34 @@ train_dir = os.path.join(
     f"size_{params['size']}",
     f"lr_{params['learning_rate']}"
 )
-train_dir = os.path.normpath(train_dir)
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-os.makedirs(train_dir,
-            exist_ok=True)
+train_dir = normpath(train_dir)
+# Logging
+if params["log_file_test"] == "":
+    logging.basicConfig(
+        format='%(levelname)s: %(message)s',
+        level=params["log_level"]
+    )
+else:
+    logging.basicConfig(
+        filename=params["log_file_test"],
+        format='%(levelname)s: %(message)s',
+        level=params["log_level"],
+    )
+
+device = torch.device("cuda"
+                      if torch.cuda.is_available()
+                      else "cpu")
+makedirs(train_dir,
+         exist_ok=True)
 
 
-def get_srnn_gts(actions, model, test_set, data_mean, data_std, dim_to_ignore, to_euler=True):
+def get_srnn_gts(actions,
+                 model,
+                 test_set,
+                 data_mean,
+                 data_std,
+                 dim_to_ignore,
+                 to_euler=True) -> None:
     """
     Get the ground truths for srnn's sequences, and convert to Euler angles
     (the error is always computed in Euler angles).
@@ -53,7 +89,11 @@ def get_srnn_gts(actions, model, test_set, data_mean, data_std, dim_to_ignore, t
     for action in actions:
         srnn_gt_euler = []
         # get_batch or get_batch_srnn
-        _, _, srnn_expmap = model.get_batch_srnn(test_set, action, device)
+        _, _, srnn_expmap = model.get_batch_srnn(
+            test_set,
+            action,
+            device
+        )
         srnn_expmap = srnn_expmap.cpu()
         # expmap -> rotmat -> euler
         for i in np.arange(srnn_expmap.shape[0]):
@@ -67,10 +107,9 @@ def get_srnn_gts(actions, model, test_set, data_mean, data_std, dim_to_ignore, t
             if to_euler:
                 for j in np.arange(denormed.shape[0]):
                     for k in np.arange(3, 97, 3):
-                        denormed[j, k:k +
-                                 3] = rotmat2euler(
-                                     expmap2rotmat(denormed[j, k:k+3])
-                        )
+                        denormed[j, k:k + 3] = rotmat2euler(
+                            expmap2rotmat(denormed[j, k:k+3]
+                                          ))
             srnn_gt_euler.append(denormed)
 
         # Put back in the dictionary
@@ -80,21 +119,29 @@ def get_srnn_gts(actions, model, test_set, data_mean, data_std, dim_to_ignore, t
 
 def main():
     """Sample predictions for srnn's seeds"""
-    actions = define_actions(args.action)
+    actions = define_actions(params["action"])
     nsamples = 8
     # === Create the model ===
-    logging.info("Creating a model with {} units.".format(args.size))
-    sampling = True
+    logging.info("Creating a model with {} units.".format(params['size']))
     logging.info("Loading model")
-    model = torch.load(train_dir + '/model_' + str(args.iterations))
-    model.source_seq_len = 50
+    model_name = f"model_{params['iterations']}"
+    model_name = join(
+        train_dir,
+        model_name
+    )
+    model = torch.load(model_name)
+    model.source_seq_len = params["seq_length_in"]
     model.target_seq_len = 100
     model = model.to(device)
     logging.info("Model created")
 
     # Load all the data
-    train_set, test_set, data_mean, data_std, dim_to_ignore, dim_to_use = read_all_data(
-        actions, 50, args.seq_length_out, args.data_dir)
+    _, test_set, data_mean, data_std, dim_to_ignore, _ = read_all_data(
+        actions,
+        50,
+        params["seq_length_in"],
+        params["data_dir"],
+    )
 
     # === Read and denormalize the gt with srnn's seeds, as we'll need them
     # many times for evaluation in Euler Angles ===
@@ -104,9 +151,13 @@ def main():
                                   data_std, dim_to_ignore)
 
     # Clean and create a new h5 file of samples
-    SAMPLES_FNAME = 'results/samples.h5'
+    SAMPLES_FNAME = "sample.h5"
+    SAMPLES_FNAME = join(
+        params["results_dir"],
+        SAMPLES_FNAME
+    )
     try:
-        os.remove(SAMPLES_FNAME)
+        remove(SAMPLES_FNAME)
     except OSError:
         pass
 
@@ -142,12 +193,18 @@ def main():
         mean_errors_batch = evaluate_batch(
             srnn_pred_expmap, srnn_gts_euler[action])
         logging.info('Mean error for test data along the horizon on action {}: {}'.format(
-            action,  mean_errors_batch))
+            action,
+            mean_errors_batch))
         logging.info('Mean error for test data at horizon {} on action {}: {}'.format(
-            args.horizon_test_step, action,  mean_errors_batch[args.horizon_test_step]))
+            params["horizon_test_step"],
+            action,
+            mean_errors_batch[params['horizon_test_step']]))
         with h5py.File(SAMPLES_FNAME, 'a') as hf:
             node_name = 'mean_{0}_error'.format(action)
-            hf.create_dataset(node_name, data=mean_errors_batch)
+            hf.create_dataset(
+                node_name,
+                data=mean_errors_batch
+            )
     return
 
 
