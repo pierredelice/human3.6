@@ -136,7 +136,7 @@ def get_srnn_gts(actions,
 
 def main():
     actions = ["walking"]
-    test_subject = 5
+    test_subject = 8
     nsamples = 20
     generative = False
     # === Create the model ===
@@ -161,7 +161,7 @@ def main():
         params["seq_length_out"],
         params["data_dir"],
     )
-
+    print(test_set)
     # === Read and denormalize the gt with srnn's seeds, as we'll need them
     # many times for evaluation in Euler Angles ===
     srnn_gts_expmap = get_srnn_gts(
