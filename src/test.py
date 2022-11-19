@@ -1,6 +1,6 @@
 
 """Simple code for training an RNN for motion prediction."""
-from models.motionpredictor import MotionPredictor
+from utils.evaluation import evaluate_batch
 from utils.read_params import read_params
 from utils.data_utils import (
     define_actions,
@@ -9,10 +9,6 @@ from utils.data_utils import (
     expmap2rotmat,
     rotmat2euler,
     revert_output_format,
-)
-from utils.evaluation import (
-    evaluate_batch,
-    evaluate,
 )
 from os.path import (
     normpath,
@@ -191,14 +187,22 @@ def main():
 
         # Compute and save the errors here
         mean_errors_batch = evaluate_batch(
-            srnn_pred_expmap, srnn_gts_euler[action])
-        logging.info('Mean error for test data along the horizon on action {}: {}'.format(
+            srnn_pred_expmap,
+            srnn_gts_euler[action]
+        )
+        text = 'Mean error for test data'
+        text1 = '{} along the horizon on action {}: {}'.format(
+            text,
             action,
-            mean_errors_batch))
-        logging.info('Mean error for test data at horizon {} on action {}: {}'.format(
-            params["horizon_test_step"],
+            mean_errors_batch
+        )
+        text2 = '{} at horizon %s on action {}: {}'.format(
+            text,
             action,
-            mean_errors_batch[params['horizon_test_step']]))
+            mean_errors_batch
+        )
+        logging.info(text1)
+        logging.info(text2)
         with h5py.File(SAMPLES_FNAME, 'a') as hf:
             node_name = 'mean_{0}_error'.format(action)
             hf.create_dataset(
