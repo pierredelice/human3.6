@@ -44,6 +44,7 @@ class MotionPredictor(Module):
         """
         super().__init__()
         self.human_dofs = 54
+        self.embedding = 132
         self.input_size = self.human_dofs + number_of_actions
         logging.info(f"Input size is {self.input_size}")
         self.source_seq_len = source_seq_len
@@ -52,18 +53,31 @@ class MotionPredictor(Module):
         self.batch_size = batch_size
         self.dropout = dropout
         # === Create the RNN that will summarizes the state ===
-        self.encoder = LSTMCell(self.input_size, self.rnn_size)
-        self.decoder = LSTMCell(self.input_size, self.rnn_size)
-        self.fc1 = Linear(self.rnn_size, self.input_size)
-        self.norm = LayerNorm(self.rnn_size)
+        self.encoder = LSTMCell(self.input_size+self.embedding,
+                                self.rnn_size)
+        self.decoder = LSTMCell(self.input_size,
+                                self.rnn_size)
+        self.fc1 = Linear(self.rnn_size,
+                          self.input_size)
         self.mu = Linear(self.rnn_size, 1)
         self.sigma = Linear(self.rnn_size, 1)
+        self.time2vec = Linear(self.input_size,
+                               self.embedding)
 
     def forward(self,
                 encoder_inputs,
                 decoder_inputs,
                 device):
         batch_size = encoder_inputs.shape[0]
+        encoder_emb = torch.sin(self.time2vec(encoder_inputs))
+        # decoder_emb = torch.sin(self.time2vec(decoder_inputs))
+        encoder_inputs = torch.cat((encoder_inputs,
+                                    encoder_emb),
+                                   axis=2)
+        # decoder_inputs = torch.cat((decoder_inputs,
+        # decoder_emb),
+        # axis=2)
+        # print(decoder_inputs.shape)
         encoder_inputs = torch.transpose(
             encoder_inputs,
             0,
@@ -104,6 +118,7 @@ class MotionPredictor(Module):
         sigma = self.sigma(context)
         state = (state-mu)/sigma
         context = (context-mu)/sigma
+        # print(context.shape)
         if not self.training:
             noise = torch.normal(0,
                                  1,
@@ -124,6 +139,7 @@ class MotionPredictor(Module):
                     self.dropout,
                     training=self.training)
             )
+            # print(output.shape)
             outputs.append(output.view(
                 [1, batch_size, self.input_size]
             ))
