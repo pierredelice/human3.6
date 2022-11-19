@@ -1,49 +1,78 @@
-import numpy as np
-import h5py
-import logging
-import argparse
-import matplotlib
+from utils.read_params import read_params
+from utils.forward_kinematics import (
+    revert_coordinate_space,
+    _some_variables,
+    fkl
+)
 import matplotlib.pyplot as plt
-import matplotlib.animation as animation
-from mpl_toolkits.mplot3d import Axes3D
-from utils.viz import *
-from utils.forward_kinematics import _some_variables, revert_coordinate_space, fkl
+from utils.viz import Ax3DPose
+# from utils.viz import *
+from os.path import join
+import numpy as np
+import logging
+import h5py
 
-parser = argparse.ArgumentParser(
-    description='Test RNN for human pose estimation')
-parser.add_argument('--id', dest='sample_id',
-                    help='Sample id.',
-                    default=0, type=int)
-args = parser.parse_args()
+params = read_params()
 
 
 def main():
     # Logging
-    logging.basicConfig(format='%(levelname)s: %(message)s', level=20)
-
+    logging.basicConfig(
+        format='%(levelname)s: %(message)s',
+        level=20
+    )
     # Load all the data
     parent, offset, rotInd, expmapInd = _some_variables()
-    with h5py.File('samples.h5', 'r') as h5f:
+    filename = "sample.h5"
+    filename = join(
+        params["results_dir"],
+        filename
+    )
+    with h5py.File(filename, 'r') as h5f:
         # Ground truth (exponential map)
-        expmap_gt = h5f['expmap/gt/walking_{}'.format(args.sample_id)][:]
+        expmap_gt = h5f['expmap/gt/walking_{}'.format(
+            params["sample_id"]
+        )][:]
         # Prediction (exponential map)
-        expmap_pred = h5f['expmap/preds/walking_{}'.format(args.sample_id)][:]
+        expmap_pred = h5f['expmap/preds/walking_{}'.format(
+            params["sample_id"])
+        ][:]
     # Number of Ground truth/Predicted frames
     nframes_gt, nframes_pred = expmap_gt.shape[0], expmap_pred.shape[0]
-    logging.info("{} {}".format(nframes_gt, nframes_pred))
+    logging.info("{} {}".format(
+        nframes_gt,
+        nframes_pred)
+    )
     # Put them together and revert the coordinate space
     expmap_all = revert_coordinate_space(
-        np.vstack((expmap_gt, expmap_pred)), np.eye(3), np.zeros(3))
+        np.vstack(
+            (expmap_gt, expmap_pred)),
+        np.eye(3),
+        np.zeros(3)
+    )
     expmap_gt = expmap_all[:nframes_gt, :]
     expmap_pred = expmap_all[nframes_gt:, :]
-
     # Use forward kinematics to compute 33 3d points for each frame
-    xyz_gt, xyz_pred = np.zeros((nframes_gt, 96)), np.zeros((nframes_pred, 96))
+    xyz_gt = np.zeros((nframes_gt,
+                       96))
+    xyz_pred = np.zeros((nframes_pred,
+                         96))
     for i in range(nframes_gt):
-        xyz_gt[i, :] = fkl(expmap_gt[i, :], parent, offset, rotInd, expmapInd)
+        xyz_gt[i, :] = fkl(
+            expmap_gt[i, :],
+            parent,
+            offset,
+            rotInd,
+            expmapInd
+        )
     for i in range(nframes_pred):
-        xyz_pred[i, :] = fkl(expmap_pred[i, :], parent,
-                             offset, rotInd, expmapInd)
+        xyz_pred[i, :] = fkl(
+            expmap_pred[i, :],
+            parent,
+            offset,
+            rotInd,
+            expmapInd
+        )
 
     # === Plot and animate ===
     fig = plt.figure()
@@ -52,7 +81,11 @@ def main():
 
     # First, plot the conditioning ground truth
     for i in range(nframes_gt):
-        ob.update(xyz_gt[i, :], lcolor="#ff0000", rcolor="#0000ff")
+        ob.update(
+            xyz_gt[i, :],
+            lcolor="#ff0000",
+            rcolor="#0000ff"
+        )
         plt.show(block=False)
         plt.title("Observations")
         fig.canvas.draw()
@@ -60,7 +93,11 @@ def main():
 
     # Plot the prediction
     for i in range(nframes_pred):
-        ob.update(xyz_pred[i, :], lcolor="#9b59b6", rcolor="#2ecc71")
+        ob.update(
+            xyz_pred[i, :],
+            lcolor="#9b59b6",
+            rcolor="#2ecc71"
+        )
         plt.show(block=False)
         plt.title("Predictions")
         fig.canvas.draw()
